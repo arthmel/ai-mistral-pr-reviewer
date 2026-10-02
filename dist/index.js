@@ -3800,6 +3800,23 @@ function flattenContent(content) {
 
 
 const normalizingFetch = async (url, init) => {
+    // Optional: tune reasoning depth for zai-glm models (low | high | max) via
+    // the REASONING_EFFORT env var. Unset = API default.
+    const effort = process.env.REASONING_EFFORT;
+    if (effort && typeof init?.body === 'string') {
+        try {
+            const body = JSON.parse(init.body);
+            if (typeof body.model === 'string' &&
+                body.model.startsWith('zai-glm') &&
+                body.reasoning_effort == null) {
+                body.reasoning_effort = effort;
+                init = { ...init, body: JSON.stringify(body) };
+            }
+        }
+        catch {
+            // not JSON: leave the request untouched
+        }
+    }
     const res = await fetch(url, init);
     if (!res.ok)
         return res;
@@ -6582,8 +6599,8 @@ class TokenLimits {
         }
         else if (model.startsWith('zai-glm')) {
             // reasoning model: "thinking" tokens count against the response budget
-            this.maxTokens = 100000;
-            this.responseTokens = 16000;
+            this.maxTokens = 200000;
+            this.responseTokens = 48000;
         }
         else if (/^(mistral|ministral|codestral|magistral)-/.test(model)) {
             // current Mistral API models and their -latest aliases

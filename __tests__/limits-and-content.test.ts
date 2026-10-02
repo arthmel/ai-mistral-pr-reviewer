@@ -5,8 +5,8 @@ import {flattenContent} from '../src/content'
 describe('TokenLimits', () => {
   test('glm models get a large window and reasoning headroom', () => {
     const l = new TokenLimits('zai-glm-5-3')
-    expect(l.maxTokens).toBe(100000)
-    expect(l.responseTokens).toBe(16000)
+    expect(l.maxTokens).toBe(200000)
+    expect(l.responseTokens).toBe(48000)
   })
   test('current mistral models and -latest aliases get a large window', () => {
     for (const m of [

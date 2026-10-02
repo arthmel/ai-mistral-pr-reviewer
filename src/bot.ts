@@ -19,6 +19,24 @@ export interface Ids {
 }
 
 export const normalizingFetch = async (url: any, init?: any): Promise<any> => {
+  // Optional: tune reasoning depth for zai-glm models (low | high | max) via
+  // the REASONING_EFFORT env var. Unset = API default.
+  const effort = process.env.REASONING_EFFORT
+  if (effort && typeof init?.body === 'string') {
+    try {
+      const body = JSON.parse(init.body)
+      if (
+        typeof body.model === 'string' &&
+        body.model.startsWith('zai-glm') &&
+        body.reasoning_effort == null
+      ) {
+        body.reasoning_effort = effort
+        init = {...init, body: JSON.stringify(body)}
+      }
+    } catch {
+      // not JSON: leave the request untouched
+    }
+  }
   const res = await fetch(url, init)
   if (!res.ok) return res
   const data: any = await res.json()

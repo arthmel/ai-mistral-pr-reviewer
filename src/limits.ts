@@ -24,8 +24,8 @@ export class TokenLimits {
       this.responseTokens = 4000
     } else if (model.startsWith('zai-glm')) {
       // reasoning model: "thinking" tokens count against the response budget
-      this.maxTokens = 100000
-      this.responseTokens = 16000
+      this.maxTokens = 200000
+      this.responseTokens = 48000
     } else if (/^(mistral|ministral|codestral|magistral)-/.test(model)) {
       // current Mistral API models and their -latest aliases
       this.maxTokens = 100000
