@@ -1,7 +1,7 @@
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
-/***/ 6959:
+/***/ 2879:
 /***/ ((__unused_webpack_module, __webpack_exports__, __nccwpck_require__) => {
 
 "use strict";
@@ -10,6 +10,8 @@
 __nccwpck_require__.d(__webpack_exports__, {
   "r": () => (/* binding */ Bot)
 });
+
+// UNUSED EXPORTS: normalizingFetch
 
 ;// CONCATENATED MODULE: external "node:http"
 const external_node_http_namespaceObject = require("node:http");
@@ -1789,7 +1791,7 @@ const supportedSchemas = new Set(['data:', 'http:', 'https:']);
  * @param   {*} [options_] - Fetch options
  * @return  {Promise<import('./response').default>}
  */
-async function fetch(url, options_) {
+async function src_fetch(url, options_) {
 	return new Promise((resolve, reject) => {
 		// Build request object
 		const request = new Request(url, options_);
@@ -1977,7 +1979,7 @@ async function fetch(url, options_) {
 						}
 
 						// HTTP-redirect fetch step 15
-						resolve(fetch(new Request(locationURL, requestOptions)));
+						resolve(src_fetch(new Request(locationURL, requestOptions)));
 						finalize();
 						return;
 					}
@@ -2164,7 +2166,7 @@ function fixResponseChunkedTransferBadEnding(request, errorCallback) {
 // fetch-polyfill.js
 
 if (!globalThis.fetch) {
-    globalThis.fetch = fetch;
+    globalThis.fetch = src_fetch;
     globalThis.Headers = Headers;
     globalThis.Request = Request;
     globalThis.Response = Response;
@@ -3149,7 +3151,7 @@ var ChatGPTAPI = class {
       model: CHATGPT_MODEL,
       temperature: 0.8,
       top_p: 1,
-      // presence_penalty: 1, avoid OpenAI error 422 due to Extra inputs are not permitted from Mistral API
+      presence_penalty: 1,
       ...completionParams
     };
     this._systemMessage = systemMessage;
@@ -3778,11 +3780,45 @@ async function pRetry(input, options) {
 	});
 }
 
+;// CONCATENATED MODULE: ./lib/content.js
+// Some models (e.g. zai-glm-*) return message.content as an array of chunks
+// ({type:'thinking'|'text', ...}) instead of a string. The chatgpt client
+// expects a string, so flatten to the concatenated 'text' chunks.
+function flattenContent(content) {
+    if (!Array.isArray(content))
+        return content;
+    return content
+        .filter((c) => c != null && c.type === 'text' && typeof c.text === 'string')
+        .map((c) => c.text)
+        .join('');
+}
+
 ;// CONCATENATED MODULE: ./lib/bot.js
 
 
 
 
+
+const normalizingFetch = async (url, init) => {
+    const res = await fetch(url, init);
+    if (!res.ok)
+        return res;
+    const data = await res.json();
+    if (Array.isArray(data?.choices)) {
+        for (const choice of data.choices) {
+            if (choice?.message) {
+                choice.message.content = flattenContent(choice.message.content);
+            }
+        }
+    }
+    return {
+        ok: true,
+        status: res.status,
+        statusText: res.statusText,
+        json: async () => data,
+        text: async () => JSON.stringify(data)
+    };
+};
 class Bot {
     api = null; // not free
     options;
@@ -3801,6 +3837,7 @@ IMPORTANT: Entire response must be in the language with ISO code: ${options.lang
                 systemMessage,
                 apiKey: process.env.OPENAI_API_KEY,
                 apiOrg: process.env.OPENAI_API_ORG ?? undefined,
+                fetch: normalizingFetch,
                 debug: options.debug,
                 maxModelTokens: openaiOptions.tokenLimits.maxTokens,
                 maxResponseTokens: openaiOptions.tokenLimits.responseTokens,
@@ -4624,7 +4661,7 @@ __nccwpck_require__.a(module, async (__webpack_handle_async_dependencies__, __we
 __nccwpck_require__.r(__webpack_exports__);
 /* harmony import */ var _actions_core__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(2186);
 /* harmony import */ var _actions_core__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__nccwpck_require__.n(_actions_core__WEBPACK_IMPORTED_MODULE_0__);
-/* harmony import */ var _bot__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(6959);
+/* harmony import */ var _bot__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(2879);
 /* harmony import */ var _options__WEBPACK_IMPORTED_MODULE_2__ = __nccwpck_require__(8870);
 /* harmony import */ var _prompts__WEBPACK_IMPORTED_MODULE_5__ = __nccwpck_require__(4272);
 /* harmony import */ var _review__WEBPACK_IMPORTED_MODULE_3__ = __nccwpck_require__(2612);
@@ -6537,9 +6574,21 @@ class TokenLimits {
             this.maxTokens = 8000;
             this.responseTokens = 2000;
         }
-        else if (model === 'mistral-tiny' || model === 'mistral-small' || model === 'mistral-medium') {
+        else if (model === 'mistral-tiny' ||
+            model === 'mistral-small' ||
+            model === 'mistral-medium') {
             this.maxTokens = 32000;
             this.responseTokens = 4000;
+        }
+        else if (model.startsWith('zai-glm')) {
+            // reasoning model: "thinking" tokens count against the response budget
+            this.maxTokens = 100000;
+            this.responseTokens = 16000;
+        }
+        else if (/^(mistral|ministral|codestral|magistral)-/.test(model)) {
+            // current Mistral API models and their -latest aliases
+            this.maxTokens = 100000;
+            this.responseTokens = 8000;
         }
         else {
             this.maxTokens = 4000;

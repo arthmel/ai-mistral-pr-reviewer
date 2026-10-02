@@ -15,9 +15,21 @@ export class TokenLimits {
     } else if (model === 'gpt-4') {
       this.maxTokens = 8000
       this.responseTokens = 2000
-    } else if (model === 'mistral-tiny' || model === 'mistral-small' || model === 'mistral-medium') {
+    } else if (
+      model === 'mistral-tiny' ||
+      model === 'mistral-small' ||
+      model === 'mistral-medium'
+    ) {
       this.maxTokens = 32000
       this.responseTokens = 4000
+    } else if (model.startsWith('zai-glm')) {
+      // reasoning model: "thinking" tokens count against the response budget
+      this.maxTokens = 100000
+      this.responseTokens = 16000
+    } else if (/^(mistral|ministral|codestral|magistral)-/.test(model)) {
+      // current Mistral API models and their -latest aliases
+      this.maxTokens = 100000
+      this.responseTokens = 8000
     } else {
       this.maxTokens = 4000
       this.responseTokens = 1000

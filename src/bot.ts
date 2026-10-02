@@ -9,12 +9,33 @@ import {
   // eslint-disable-next-line import/no-unresolved
 } from 'chatgpt'
 import pRetry from 'p-retry'
+import {flattenContent} from './content'
 import {OpenAIOptions, Options} from './options'
 
 // define type to save parentMessageId and conversationId
 export interface Ids {
   parentMessageId?: string
   conversationId?: string
+}
+
+export const normalizingFetch = async (url: any, init?: any): Promise<any> => {
+  const res = await fetch(url, init)
+  if (!res.ok) return res
+  const data: any = await res.json()
+  if (Array.isArray(data?.choices)) {
+    for (const choice of data.choices) {
+      if (choice?.message) {
+        choice.message.content = flattenContent(choice.message.content)
+      }
+    }
+  }
+  return {
+    ok: true,
+    status: res.status,
+    statusText: res.statusText,
+    json: async () => data,
+    text: async () => JSON.stringify(data)
+  }
 }
 
 export class Bot {
@@ -38,6 +59,7 @@ IMPORTANT: Entire response must be in the language with ISO code: ${options.lang
         systemMessage,
         apiKey: process.env.OPENAI_API_KEY,
         apiOrg: process.env.OPENAI_API_ORG ?? undefined,
+        fetch: normalizingFetch as any,
         debug: options.debug,
         maxModelTokens: openaiOptions.tokenLimits.maxTokens,
         maxResponseTokens: openaiOptions.tokenLimits.responseTokens,
