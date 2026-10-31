@@ -8,6 +8,14 @@ describe('TokenLimits', () => {
     expect(l.maxTokens).toBe(200000)
     expect(l.responseTokens).toBe(48000)
   })
+  test('direct Z.ai glm names get the same window', () => {
+    for (const m of ['glm-5.3', 'glm-5.1', 'glm-4.7']) {
+      const l = new TokenLimits(m)
+      expect(l.maxTokens).toBe(200000)
+      expect(l.responseTokens).toBe(48000)
+    }
+    expect(new TokenLimits('glmx').maxTokens).toBe(4000)
+  })
   test('current mistral models and -latest aliases get a large window', () => {
     for (const m of [
       'mistral-small-latest',

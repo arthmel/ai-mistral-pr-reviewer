@@ -6597,8 +6597,8 @@ class TokenLimits {
             this.maxTokens = 32000;
             this.responseTokens = 4000;
         }
-        else if (model.startsWith('zai-glm')) {
-            // reasoning model: "thinking" tokens count against the response budget
+        else if (/^(zai-)?glm-/.test(model)) {
+            // GLM via Mistral (zai-glm-*) or direct Z.ai (glm-*). Reasoning model: "thinking" tokens count against the response budget
             this.maxTokens = 200000;
             this.responseTokens = 48000;
         }
